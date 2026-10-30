@@ -1,5 +1,5 @@
 # Local recordings and their transcripts never leave this machine.
-vm/
+audio/
 transcribed/
 
 # Audio files

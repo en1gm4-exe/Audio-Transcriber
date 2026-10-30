@@ -13,13 +13,15 @@ download a separate model per language.
 - Offline transcription of common audio formats (`.ogg`, `.opus`, `.oga`, `.m4a`,
   `.mp3`, `.wav`, `.flac`, `.amr`, `.mp4`, `.webm`, and more)
 - Automatic language detection, or force a specific language
-- **Intelligent Cross-Translation**: Translate any supported language into
-  coherent English using Whisper's built-in translation task.
+- **English translation** — a second pass turns the audio into coherent English,
+  while the original-language transcript is kept as well
 - GPU acceleration when an NVIDIA GPU is available, with automatic CPU fallback
 - Optional Roman Urdu output — Urdu script transliterated into Latin letters
   for easier reading
 - Plain text (`.txt`) and subtitle (`.srt`) output
 - Batch mode: pass individual files or whole folders, optionally recursive
+- Local web front end for drag-and-drop use, with live progress and download
+  (`gui.py` + `ui.html`)
 
 ## Requirements
 
@@ -47,7 +49,7 @@ python transcribe.py a.ogg b.m4a --outdir out
 
 ### Wrapper scripts
 
-Both wrappers transcribe a recording from a `vm/` folder into a `transcribed/`
+Both wrappers transcribe a recording from an `audio/` folder into a `transcribed/`
 folder, writing both the Urdu-script text and the Roman Urdu version. They only
 need the file name.
 
@@ -55,7 +57,7 @@ need the file name.
 .\run.ps1 audio.ogg              # exact name, extension optional
 .\run.ps1 audio                  # partial name is enough
 .\run.ps1 audio.ogg --language urdu
-.\run.ps1                        # no name: lists files in .\vm
+.\run.ps1                        # no name: lists files in .\audio
 ```
 
 ```bash
@@ -66,6 +68,37 @@ If PowerShell blocks the script, either run it with
 `powershell -ExecutionPolicy Bypass -File .\run.ps1 audio.ogg`, or allow local
 scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
+### Web interface
+
+A local front end is included — no extra dependencies, no network exposure.
+
+```bash
+python gui.py                    # opens http://voxy.localhost:8765
+python gui.py --port 9000        # different port
+python gui.py --host voxy.home   # different hostname
+python gui.py --no-browser       # don't open the browser
+```
+
+The default name is `voxy.localhost`. Browsers resolve anything under
+`.localhost` to `127.0.0.1` on their own, so it works with no DNS entry and no
+hosts-file edit. `http://127.0.0.1:8765` keeps working as a fallback, and it is
+printed on startup.
+
+Drag audio files onto the page (or record from the microphone), choose the
+language, model and device, and press **Transcribe**. Text appears as it is
+decoded. When the job finishes, every result gets its own tab — the transcript
+in the original language, the English translation, the Roman Urdu version, and
+the subtitles — each one copyable and downloadable.
+
+Turning on **Also translate to English** runs a second pass, so you keep both the
+original transcript and the translation. Expect the job to take roughly twice as
+long with it on. Note that Whisper can only translate *into* English; other
+target languages are not supported.
+
+The server binds to `127.0.0.1` only, so it is reachable from your own machine
+and never from the network. Results are written to `transcribed/` exactly as
+with the CLI. `Ctrl+C` in the terminal stops it.
+
 ### Argument reference
 
 | Argument | Default | Description |
@@ -75,7 +108,7 @@ scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 | `-m`, `--model` | `large-v3` | `large-v3`, `large-v3-turbo`, `medium`, `small`, `base`, `tiny` |
 | `-f`, `--format` | `txt` | `txt`, `srt`, `both`, `none` |
 | `--roman` | off | Also write a Roman Urdu version (`.roman.txt`) |
-| `--translate` | off | Translate audio into English (`.translated.txt`) |
+| `--translate` | off | Also write an English translation (`.translated.txt`) |
 | `-o`, `--outdir` | next to the audio | Where to write the output |
 | `-d`, `--device` | `auto` | `auto`, `cuda`, `cpu` |
 | `-r`, `--recursive` | off | Recurse into folders |
@@ -116,7 +149,11 @@ later runs start instantly and need no network.
    same phrase on long or noisy recordings.
 5. **Output** — segments are joined into a single `.txt`, or written out as
    timestamped `.srt` cues.
-6. **Roman Urdu** — applied last, and only with `--roman`.
+6. **Roman Urdu** — applied after transcription, and only with `--roman`.
+7. **Translation** — with `--translate`, a second pass re-runs the same audio
+   through Whisper's translate task. It is a separate pass because the model
+   cannot emit a transcript and a translation at the same time, so this roughly
+   doubles the runtime.
 
 ### Roman Urdu transliteration
 
@@ -138,9 +175,10 @@ The result is meant to be readable, not authoritative.
 For an input named `audio.ogg`:
 
 ```
-audio.txt         full transcript in the detected script
-audio.roman.txt   Roman Urdu transliteration (only with --roman, Urdu audio only)
-audio.srt         timestamped subtitles (only with --format srt or both)
+audio.txt             full transcript in the original language
+audio.translated.txt  English translation (only with --translate)
+audio.roman.txt       Roman Urdu transliteration (only with --roman, Urdu audio only)
+audio.srt             timestamped subtitles (only with --format srt or both)
 ```
 
 ## Notes and limitations
@@ -159,6 +197,9 @@ audio.srt         timestamped subtitles (only with --format srt or both)
   `--language urdu` usually helps.
 - **Proper nouns and acronyms are unreliable**, especially names that are not
   in the model's vocabulary.
+- **Translation only targets English.** Whisper's translate task has English as
+  its single output language. Use it to reach English, then translate onward
+  with another tool if you need a third language.
 - **GPU on Windows:** `ctranslate2` needs cuBLAS 12 and cuDNN 9, which it does
   not bundle. If CUDA is already installed for PyTorch, `transcribe.py`
   registers those DLLs automatically. Otherwise install them, or run with
@@ -169,13 +210,15 @@ audio.srt         timestamped subtitles (only with --format srt or both)
 ```
 README.md           this file
 transcribe.py       transcriber CLI (model loading, decoding, output formats)
+gui.py              local web server for the front end
+ui.html             the front end itself (single page, no build step)
 run.ps1 / run.sh    thin wrappers for single-file transcription
 requirements.txt    dependencies
 .gitattributes      line-ending rules
-vm/                 input recordings (not tracked by git)
+audio/              input recordings (not tracked by git)
 transcribed/        output (not tracked by git)
 ```
 
-`vm/` and `transcribed/` are ignored by git, so recordings and their
+`audio/` and `transcribed/` are ignored by git, so recordings and their
 transcripts stay on your machine. A fresh clone will not have them — create the
-`vm/` folder and drop your audio in before running either wrapper.
+`audio/` folder and drop your audio in before running either wrapper.

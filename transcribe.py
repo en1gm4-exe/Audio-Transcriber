@@ -3,11 +3,13 @@
 
 Transcribes audio locally with faster-whisper; no API calls and no uploads. A
 single multilingual model handles Urdu, English, Punjabi, Japanese, German,
-Spanish, Arabic and French.
+Spanish, Arabic, French and Chinese. The audio can also be translated into
+English without leaving the machine.
 
 Usage:
     python transcribe.py audio.ogg
     python transcribe.py audio.ogg --language urdu --roman
+    python transcribe.py audio.ogg --translate
     python transcribe.py recordings/ --recursive --format both
 
 Models (downloaded on first use, then cached):
@@ -298,15 +300,38 @@ def write_srt(path: Path, segments: list) -> None:
     path.write_text("\n".join(blocks), encoding="utf-8")
 
 
+# Prompts that nudge the model towards punctuated, readable sentences.
+TRANSCRIBE_PROMPT = "A clear, well-punctuated transcription."
+TRANSLATE_PROMPT = "A clear, well-punctuated English translation."
+
+
+def run_pass(model, audio: Path, language: str | None, task: str, prompt: str):
+    """Start one Whisper pass. Segments are lazy, so callers can stream them."""
+    return model.transcribe(
+        str(audio),
+        language=language,
+        task=task,
+        vad_filter=True,
+        beam_size=5,
+        initial_prompt=prompt,
+        # Stops the model looping on long or noisy audio.
+        condition_on_previous_text=False,
+    )
+
+
+def join_text(segments) -> str:
+    return " ".join(seg.text.strip() for seg in segments).strip()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Transcribe audio files offline (Urdu, English, Punjabi, Japanese, German, Spanish, Arabic, French).",
+        description="Transcribe audio files offline (Urdu, English, Punjabi, Japanese, German, Spanish, Arabic, French, Chinese).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("inputs", nargs="+", help="audio files and/or folders")
     parser.add_argument(
         "--language", "-l", default="auto",
-        help="auto (default), or one of: urdu, english, punjabi, japanese, german, spanish, arabic, french",
+        help="auto (default), or one of: urdu, english, punjabi, japanese, german, spanish, arabic, french, chinese",
     )
     parser.add_argument(
         "--model", "-m", default="large-v3",
@@ -322,7 +347,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--translate", action="store_true",
-        help="translate the audio into English (intelligent cross-translation)",
+        help="additionally write an English translation (.translated.txt)",
     )
     parser.add_argument("--outdir", "-o", default=None, help="write output here instead")
     parser.add_argument(
@@ -363,28 +388,14 @@ def main() -> int:
         print(f"[{index}/{len(files)}] {audio.name}")
         file_started = time.time()
         try:
-            # Use an initial prompt to help the agent maintain coherence and sense.
-            prompt = "The following is a clear, intelligent transcription with correct punctuation."
-            if args.translate:
-                prompt = "The following is a clear, intelligent translation into English."
-
-            segments, info = model.transcribe(
-                str(audio),
-                language=language,
-                task="translate" if args.translate else "transcribe",
-                vad_filter=True,
-                beam_size=5,
-                initial_prompt=prompt,
-                # Prevents repeated output on long or noisy audio.
-                condition_on_previous_text=False,
-            )
+            segments, info = run_pass(model, audio, language, "transcribe", TRANSCRIBE_PROMPT)
             segments = list(segments)
         except Exception as exc:
             failures += 1
             print(f"    FAILED: {type(exc).__name__}: {exc}\n")
             continue
 
-        text = " ".join(s.text.strip() for s in segments).strip()
+        text = join_text(segments)
         elapsed = time.time() - file_started
 
         detected = info.language
@@ -404,16 +415,15 @@ def main() -> int:
 
         target_dir = outdir if outdir else audio.parent
         stem = audio.stem
-        suffix = ".translated" if args.translate else ""
 
         if args.format in {"txt", "both"}:
-            write_txt(target_dir / f"{stem}{suffix}.txt", text)
-            print(f"    -> {target_dir / f'{stem}{suffix}.txt'}")
+            write_txt(target_dir / f"{stem}.txt", text)
+            print(f"    -> {target_dir / f'{stem}.txt'}")
         if args.format in {"srt", "both"}:
-            write_srt(target_dir / f"{stem}{suffix}.srt", segments)
-            print(f"    -> {target_dir / f'{stem}{suffix}.srt'}")
+            write_srt(target_dir / f"{stem}.srt", segments)
+            print(f"    -> {target_dir / f'{stem}.srt'}")
 
-        if args.roman and not args.translate:
+        if args.roman:
             if detected == "ur":
                 roman = urdu_to_roman(text)
                 if not args.quiet:
@@ -423,6 +433,23 @@ def main() -> int:
                 print(f"    -> {target_dir / f'{stem}.roman.txt'}")
             else:
                 print(f"    (--roman skipped: audio is {detected}, Roman output is Urdu-only)")
+
+        if args.translate:
+            # A second pass: Whisper has no way to emit both at once.
+            try:
+                translated, _ = run_pass(model, audio, language, "translate", TRANSLATE_PROMPT)
+                translation = join_text(translated)
+            except Exception as exc:
+                failures += 1
+                print(f"    TRANSLATION FAILED: {type(exc).__name__}: {exc}\n")
+                continue
+            if translation:
+                if not args.quiet:
+                    print()
+                    print(translation)
+                if args.format in {"txt", "both"}:
+                    write_txt(target_dir / f"{stem}.translated.txt", translation)
+                    print(f"    -> {target_dir / f'{stem}.translated.txt'}")
         print()
 
     total = time.time() - started
