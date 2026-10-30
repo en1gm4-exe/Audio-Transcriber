@@ -1,0 +1,17 @@
+# Local recordings and their transcripts never leave this machine.
+vm/
+transcribed/
+
+# Audio files
+*.ogg
+*.opus
+*.m4a
+*.mp3
+*.wav
+
+# Environments and caches
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc

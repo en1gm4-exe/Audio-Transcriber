@@ -1,0 +1,4 @@
+* text=auto
+
+# Keep shell scripts LF-only so they run after a clone.
+*.sh text eol=lf
