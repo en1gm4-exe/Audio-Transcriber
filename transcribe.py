@@ -47,11 +47,13 @@ LANGUAGE_ALIASES = {
     "es": "es", "spanish": "es", "español": "es",
     "ar": "ar", "arabic": "ar",
     "fr": "fr", "french": "fr", "français": "fr",
+    "zh": "zh", "chinese": "zh", "mandarin": "zh", "中文": "zh",
 }
 
 LANGUAGE_NAMES = {
     "ur": "Urdu", "en": "English", "pa": "Punjabi", "ja": "Japanese",
     "de": "German", "es": "Spanish", "ar": "Arabic", "fr": "French",
+    "zh": "Chinese",
 }
 
 
@@ -318,6 +320,10 @@ def main() -> int:
         "--roman", action="store_true",
         help="additionally write a Roman Urdu version (.roman.txt) for Urdu audio",
     )
+    parser.add_argument(
+        "--translate", action="store_true",
+        help="translate the audio into English (intelligent cross-translation)",
+    )
     parser.add_argument("--outdir", "-o", default=None, help="write output here instead")
     parser.add_argument(
         "--device", "-d", default="auto", choices=["auto", "cuda", "cpu"],
@@ -357,11 +363,18 @@ def main() -> int:
         print(f"[{index}/{len(files)}] {audio.name}")
         file_started = time.time()
         try:
+            # Use an initial prompt to help the agent maintain coherence and sense.
+            prompt = "The following is a clear, intelligent transcription with correct punctuation."
+            if args.translate:
+                prompt = "The following is a clear, intelligent translation into English."
+
             segments, info = model.transcribe(
                 str(audio),
                 language=language,
+                task="translate" if args.translate else "transcribe",
                 vad_filter=True,
                 beam_size=5,
+                initial_prompt=prompt,
                 # Prevents repeated output on long or noisy audio.
                 condition_on_previous_text=False,
             )
@@ -391,14 +404,16 @@ def main() -> int:
 
         target_dir = outdir if outdir else audio.parent
         stem = audio.stem
-        if args.format in {"txt", "both"}:
-            write_txt(target_dir / f"{stem}.txt", text)
-            print(f"    -> {target_dir / f'{stem}.txt'}")
-        if args.format in {"srt", "both"}:
-            write_srt(target_dir / f"{stem}.srt", segments)
-            print(f"    -> {target_dir / f'{stem}.srt'}")
+        suffix = ".translated" if args.translate else ""
 
-        if args.roman:
+        if args.format in {"txt", "both"}:
+            write_txt(target_dir / f"{stem}{suffix}.txt", text)
+            print(f"    -> {target_dir / f'{stem}{suffix}.txt'}")
+        if args.format in {"srt", "both"}:
+            write_srt(target_dir / f"{stem}{suffix}.srt", segments)
+            print(f"    -> {target_dir / f'{stem}{suffix}.srt'}")
+
+        if args.roman and not args.translate:
             if detected == "ur":
                 roman = urdu_to_roman(text)
                 if not args.quiet:

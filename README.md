@@ -1,7 +1,7 @@
 # Offline Audio Transcriber
 
 A local, offline audio transcription tool for **Urdu, English, Punjabi,
-Japanese, German, Spanish, Arabic and French**, built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+Japanese, German, Spanish, Arabic, French and Chinese**, built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
 
 Everything runs on your own machine. Once the model has been downloaded there
 are no API calls, no accounts, no uploads and no internet requirement. A single
@@ -10,9 +10,11 @@ download a separate model per language.
 
 ## Features
 
-- Offline transcription of common audio formats (`.ogg`, `.opus`, `.m4a`,
+- Offline transcription of common audio formats (`.ogg`, `.opus`, `.oga`, `.m4a`,
   `.mp3`, `.wav`, `.flac`, `.amr`, `.mp4`, `.webm`, and more)
 - Automatic language detection, or force a specific language
+- **Intelligent Cross-Translation**: Translate any supported language into
+  coherent English using Whisper's built-in translation task.
 - GPU acceleration when an NVIDIA GPU is available, with automatic CPU fallback
 - Optional Roman Urdu output — Urdu script transliterated into Latin letters
   for easier reading
@@ -69,10 +71,11 @@ scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 | Argument | Default | Description |
 | --- | --- | --- |
 | `inputs` | — | One or more audio files and/or folders |
-| `-l`, `--language` | `auto` | `auto`, `urdu`, `english`, `punjabi`, `japanese`, `german`, `spanish`, `arabic`, `french` |
+| `-l`, `--language` | `auto` | `auto`, `urdu`, `english`, `punjabi`, `japanese`, `german`, `spanish`, `arabic`, `french`, `chinese` |
 | `-m`, `--model` | `large-v3` | `large-v3`, `large-v3-turbo`, `medium`, `small`, `base`, `tiny` |
 | `-f`, `--format` | `txt` | `txt`, `srt`, `both`, `none` |
 | `--roman` | off | Also write a Roman Urdu version (`.roman.txt`) |
+| `--translate` | off | Translate audio into English (`.translated.txt`) |
 | `-o`, `--outdir` | next to the audio | Where to write the output |
 | `-d`, `--device` | `auto` | `auto`, `cuda`, `cpu` |
 | `-r`, `--recursive` | off | Recurse into folders |
