@@ -2,7 +2,8 @@
 """Offline multilingual audio transcriber.
 
 Transcribes audio locally with faster-whisper; no API calls and no uploads. A
-single multilingual model handles Urdu, English, Punjabi and Japanese.
+single multilingual model handles Urdu, English, Punjabi, Japanese, German,
+Spanish, Arabic and French.
 
 Usage:
     python transcribe.py audio.ogg
@@ -42,10 +43,15 @@ LANGUAGE_ALIASES = {
     "en": "en", "english": "en", "eng": "en",
     "pa": "pa", "punjabi": "pa", "panjabi": "pa",
     "ja": "ja", "japanese": "ja", "jp": "ja",
+    "de": "de", "german": "de", "deutsch": "de",
+    "es": "es", "spanish": "es", "español": "es",
+    "ar": "ar", "arabic": "ar",
+    "fr": "fr", "french": "fr", "français": "fr",
 }
 
 LANGUAGE_NAMES = {
     "ur": "Urdu", "en": "English", "pa": "Punjabi", "ja": "Japanese",
+    "de": "German", "es": "Spanish", "ar": "Arabic", "fr": "French",
 }
 
 
@@ -292,13 +298,13 @@ def write_srt(path: Path, segments: list) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Transcribe audio files offline (Urdu, English, Punjabi, Japanese).",
+        description="Transcribe audio files offline (Urdu, English, Punjabi, Japanese, German, Spanish, Arabic, French).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("inputs", nargs="+", help="audio files and/or folders")
     parser.add_argument(
         "--language", "-l", default="auto",
-        help="auto (default), or one of: urdu, english, punjabi, japanese (also ur/en/pa/ja)",
+        help="auto (default), or one of: urdu, english, punjabi, japanese, german, spanish, arabic, french",
     )
     parser.add_argument(
         "--model", "-m", default="large-v3",

@@ -1,11 +1,11 @@
 # Offline Audio Transcriber
 
-A local, offline audio transcription tool for **Urdu, English, Punjabi and
-Japanese**, built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+A local, offline audio transcription tool for **Urdu, English, Punjabi,
+Japanese, German, Spanish, Arabic and French**, built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
 
 Everything runs on your own machine. Once the model has been downloaded there
 are no API calls, no accounts, no uploads and no internet requirement. A single
-multilingual model handles all four languages, so there is no need to pick or
+multilingual model handles all these languages, so there is no need to pick or
 download a separate model per language.
 
 ## Features
@@ -69,7 +69,7 @@ scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 | Argument | Default | Description |
 | --- | --- | --- |
 | `inputs` | — | One or more audio files and/or folders |
-| `-l`, `--language` | `auto` | `auto`, `urdu`, `english`, `punjabi`, `japanese` (or `ur`/`en`/`pa`/`ja`) |
+| `-l`, `--language` | `auto` | `auto`, `urdu`, `english`, `punjabi`, `japanese`, `german`, `spanish`, `arabic`, `french` |
 | `-m`, `--model` | `large-v3` | `large-v3`, `large-v3-turbo`, `medium`, `small`, `base`, `tiny` |
 | `-f`, `--format` | `txt` | `txt`, `srt`, `both`, `none` |
 | `--roman` | off | Also write a Roman Urdu version (`.roman.txt`) |
@@ -80,8 +80,8 @@ scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 ### Models
 
-Whisper is a single multilingual model family, so one download covers all four
-languages. `--model` accepts any faster-whisper model name; the ones worth
+Whisper is a single multilingual model family, so one download covers all
+supported languages. `--model` accepts any faster-whisper model name; the ones worth
 using here are:
 
 | Model | Download | Speed | Accuracy on Urdu | Notes |
